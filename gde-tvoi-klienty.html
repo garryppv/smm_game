@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Где твои клиенты? — игра-диагностика за 3 минуты</title>
+<meta name="description" content="Симулятор эксперта: пройди месяц продвижения за 3 минуты и узнай, где ты теряешь клиентов из соцсетей.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ECE9F4;
+  --card:#FFFFFF;
+  --ink:#1E1730;
+  --ink-soft:#5B5470;
+  --accent:#E4326B;
+  --accent-dark:#C02456;
+  --violet:#6D5FA8;
+  --green:#2FB673;
+  --amber:#F5A623;
+  --line:#DDD8EA;
+  --radius:20px;
+  --shadow:0 10px 30px rgba(30,23,48,.10);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Onest',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  min-height:100dvh;
+  display:flex;
+  justify-content:center;
+}
+.phone{
+  width:100%;
+  max-width:480px;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  padding:16px 18px calc(20px + env(safe-area-inset-bottom));
+}
+.screen{display:none;flex-direction:column;flex:1}
+.screen.active{display:flex}
+
+/* ---------- типографика ---------- */
+h1,h2,.display{font-family:'Unbounded',sans-serif;letter-spacing:-.01em}
+.eyebrow{
+  font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--violet);
+}
+.small{font-size:13px;color:var(--ink-soft);line-height:1.5}
+
+/* ---------- интро ---------- */
+#intro{justify-content:center;text-align:left;gap:22px}
+#intro .eyebrow{display:flex;align-items:center;gap:8px}
+#intro h1{font-size:clamp(30px,9vw,44px);font-weight:800;line-height:1.06}
+#intro h1 .q{color:var(--accent)}
+#intro .promise{font-size:16.5px;line-height:1.55;color:var(--ink)}
+#intro .promise b{color:var(--accent-dark)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink-soft);
+}
+
+/* ---------- кнопки ---------- */
+.btn{
+  appearance:none;border:none;cursor:pointer;font-family:'Onest',sans-serif;
+  border-radius:16px;font-weight:700;transition:transform .12s ease, background .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:focus-visible{outline:3px solid var(--violet);outline-offset:2px}
+.btn-primary{
+  background:var(--accent);color:#fff;font-size:17px;
+  padding:17px 24px;box-shadow:0 8px 20px rgba(228,50,107,.35);
+}
+.btn-primary:active{transform:scale(.97)}
+.btn-ghost{
+  background:transparent;color:var(--violet);font-size:15px;padding:12px 16px;font-weight:600;
+}
+
+/* ---------- шапка игры: сторис-прогресс + шкалы ---------- */
+.hud{position:sticky;top:0;padding:10px 0 12px;background:var(--bg);z-index:5}
+.story-track{display:flex;gap:5px;margin-bottom:14px}
+.story-seg{flex:1;height:4px;border-radius:99px;background:#D6D0E6;overflow:hidden}
+.story-seg i{display:block;height:100%;width:0;background:var(--ink);border-radius:99px;transition:width .35s ease}
+.story-seg.done i{width:100%}
+.meters{display:flex;gap:12px}
+.meter{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 12px 11px;position:relative}
+.meter-label{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px}
+.meter-val{font-family:'Unbounded';font-size:13px;color:var(--ink)}
+.bar{height:7px;background:#EFEBF7;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.meter.clients .bar i{background:var(--green)}
+.meter.energy .bar i{background:var(--amber)}
+.delta{
+  position:absolute;right:10px;top:-9px;font-family:'Unbounded';font-size:12px;font-weight:700;
+  opacity:0;pointer-events:none;
+}
+.delta.pos{color:var(--green)}
+.delta.neg{color:var(--accent)}
+.delta.show{animation:floatUp 1.1s ease forwards}
+@keyframes floatUp{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+
+/* ---------- карточка ситуации ---------- */
+.stage{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:16px;padding-top:6px}
+.situation{
+  background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:20px;position:relative;
+}
+.situation .src{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.src-ico{
+  width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  font-size:17px;background:linear-gradient(135deg,#F6E7FF,#FFE3EE);
+}
+.src-name{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--violet)}
+.situation p{font-size:17px;line-height:1.5;font-weight:500}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-bottom:4px}
+.choice{
+  text-align:left;background:var(--card);border:1.5px solid var(--line);
+  border-radius:16px;padding:15px 16px;font-size:15.5px;line-height:1.4;font-weight:500;
+  min-height:52px;
+}
+.choice:active{transform:scale(.985)}
+.choice:hover{border-color:var(--violet)}
+
+/* ---------- обратная связь ---------- */
+.feedback{
+  background:var(--ink);color:#fff;border-radius:var(--radius);
+  padding:18px 20px;font-size:16px;line-height:1.5;box-shadow:var(--shadow);
+}
+.feedback .fb-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B9A9F0;display:block;margin-bottom:8px}
+.next-wrap{margin-top:auto;padding-bottom:4px}
+.next-wrap .btn-primary{width:100%}
+
+/* ---------- результат ---------- */
+#result{gap:18px;padding-top:10px}
+.verdict-hero{
+  background:var(--card);border-radius:24px;box-shadow:var(--shadow);
+  padding:26px 22px;text-align:center;
+}
+.verdict-hero .v-emoji{font-size:44px;line-height:1}
+.verdict-hero .v-eyebrow{margin:12px 0 6px}
+.verdict-hero h2{font-size:clamp(22px,6.5vw,28px);font-weight:800;line-height:1.15}
+.verdict-hero .v-desc{margin-top:12px;font-size:15.5px;line-height:1.6;color:var(--ink-soft);text-align:left}
+.finals{display:flex;gap:10px;justify-content:center;margin-top:16px}
+.final-pill{background:#F4F1FA;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--ink-soft)}
+.final-pill b{font-family:'Unbounded';font-size:13px;color:var(--ink)}
+
+.holes{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.holes h3{font-family:'Unbounded';font-size:15px;font-weight:700;margin-bottom:14px}
+.hole{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.5}
+.hole:first-of-type{border-top:none;padding-top:0}
+.hole .h-num{
+  flex:none;width:26px;height:26px;border-radius:9px;background:#FFE3EE;color:var(--accent-dark);
+  font-family:'Unbounded';font-size:12px;font-weight:700;display:grid;place-items:center;margin-top:1px;
+}
+.first-step{
+  background:linear-gradient(135deg,#FFF3E4,#FFE9F1);border-radius:var(--radius);padding:18px 20px;
+  font-size:15.5px;line-height:1.55;
+}
+.first-step b{display:block;font-family:'Unbounded';font-size:13px;margin-bottom:6px}
+
+.cta-block{
+  background:var(--ink);color:#fff;border-radius:24px;padding:24px 22px;box-shadow:var(--shadow);
+}
+.cta-block h3{font-family:'Unbounded';font-size:19px;font-weight:700;line-height:1.3;margin-bottom:10px}
+.cta-block p{font-size:15px;line-height:1.55;color:#CFC7E6;margin-bottom:18px}
+.cta-block .btn-primary{width:100%;display:block;text-align:center;text-decoration:none}
+.result-actions{display:flex;gap:10px}
+.result-actions .btn{flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font-size:14.5px;padding:14px 10px;font-weight:600}
+.ps{font-size:13px;color:var(--ink-soft);line-height:1.55;text-align:center;padding:4px 8px 12px}
+.ps a{color:var(--accent-dark);font-weight:700}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ЭКРАН 1: ИНТРО -->
+  <section class="screen active" id="intro">
+    <div class="eyebrow">🎮 Игра · 3 минуты · 9 ходов</div>
+    <h1>ГДЕ ТВОИ<br>КЛИЕНТЫ<span class="q">?</span></h1>
+    <p class="promise">Симулятор эксперта, который решил получать клиентов из соцсетей. Проживи месяц продвижения за 3 минуты — и узнай, <b>в каком именно месте ты теряешь клиентов</b> прямо сейчас.</p>
+    <div class="chips">
+      <span class="chip">Твой тип продвижения</span>
+      <span class="chip">3 дыры, куда утекают деньги</span>
+      <span class="chip">Первый шаг — что чинить</span>
+    </div>
+    <button class="btn btn-primary" onclick="startGame()">Начать месяц →</button>
+    <p class="small">Без регистрации. В конце — персональный вердикт, которым захочется поделиться (или который захочется скрыть).</p>
+  </section>
+
+  <!-- ЭКРАН 2: ИГРА -->
+  <section class="screen" id="game">
+    <div class="hud">
+      <div class="story-track" id="storyTrack"></div>
+      <div class="meters">
+        <div class="meter clients">
+          <span class="delta" id="deltaC"></span>
+          <div class="meter-label"><span>Клиенты</span><span class="meter-val" id="valC">10</span></div>
+          <div class="bar"><i id="barC" style="width:10%"></i></div>
+        </div>
+        <div class="meter energy">
+          <span class="delta" id="deltaE"></span>
+          <div class="meter-label"><span>Энергия</span><span class="meter-val" id="valE">80</span></div>
+          <div class="bar"><i id="barE" style="width:80%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage"></div>
+  </section>
+
+  <!-- ЭКРАН 3: РЕЗУЛЬТАТ -->
+  <section class="screen" id="result"></section>
+
+</div>
+
+<script>
+/* ================= ДАННЫЕ ================= */
+const TG_LINK = "https://t.me/igppv_smm";
+
+const QUESTIONS = [
+ {src:"🧠", srcName:"Понедельник, утро",
+  text:"Ты решаешь: хватит. Пора вести соцсети всерьёз и получать оттуда клиентов. С чего начнёшь?",
+  choices:[
+   {t:"Выложу пост прямо сейчас — о чём-нибудь", tag:"chaos", c:+2, e:-5,
+    fb:"Пост вышел. Про что он был — ты уже и сам не помнишь. И подписчики тоже."},
+   {t:"Сначала пройду ещё один курс по продвижению", tag:"magic", c:0, e:-10,
+    fb:"Курс куплен. Папка «Сохранённое» пополнилась. Клиентов не прибавилось."},
+   {t:"Разберусь, кто мой клиент и за что он готов платить", tag:"system", c:+5, e:-5,
+    fb:"Скучно? Зато теперь каждый пост будет бить в одну цель, а не в белый свет."}
+  ]},
+ {src:"📱", srcName:"Профиль",
+  text:"Оформляешь страницу. Что напишешь в шапке профиля?",
+  choices:[
+   {t:"«Эксперт с 12-летним опытом. Дипломы, сертификаты»", tag:"ghost", c:+2, e:-2,
+    fb:"Солидно. Только клиент ищет решение своей проблемы, а не твои регалии."},
+   {t:"Ничего особенного — главное же контент", tag:"chaos", c:0, e:-2,
+    fb:"Люди заходят, смотрят 3 секунды и уходят. Кто ты и зачем подписываться — непонятно."},
+   {t:"Кому помогаю, с чем — и что сделать, чтобы начать", tag:"system", c:+8, e:-2,
+    fb:"Теперь случайный зритель за 5 секунд понимает, зачем ты ему. Это и есть упаковка."}
+  ]},
+ {src:"🎬", srcName:"Лента",
+  text:"Первый рилс: 214 просмотров, ноль реакций. Что делаешь?",
+  choices:[
+   {t:"Рилсы не работают. Больше не снимаю", tag:"ghost", c:-3, e:+5,
+    fb:"Первый блин — и сразу сдался. А проблема была всего лишь в хуке первых секунд."},
+   {t:"Сниму ещё десять таких же — количество решает", tag:"grind", c:+3, e:-15,
+    fb:"Десять рилсов по 200 просмотров = 2 000 просмотров и минус выходные."},
+   {t:"Гляну, на какой секунде люди уходят, и переделаю хук", tag:"system", c:+6, e:-5,
+    fb:"Отвал на 2-й секунде. Новый хук — и рилс собрал 1 800. Аналитика > вдохновение."}
+  ]},
+ {src:"💬", srcName:"Директ",
+  text:"Сообщение: «Здравствуйте! А сколько у вас стоит?» Твой ответ?",
+  choices:[
+   {t:"Мнусь, отвечаю уклончиво… человек пропадает", tag:"ghost", c:-5, e:-5,
+    fb:"Он хотел купить. Ушёл к тому, кто не стесняется своей цены."},
+   {t:"Кидаю прайс одним сообщением и жду", tag:"chaos", c:+2, e:0,
+    fb:"Прочитано. Без ответа. Цена без ценности всегда кажется дорогой."},
+   {t:"Спрашиваю про задачу и предлагаю созвон на 15 минут", tag:"system", c:+10, e:-5,
+    fb:"Созвон назначен. Продажа — это диалог, а не пересылка прайса."}
+  ]},
+ {src:"🌙", srcName:"Вечер, 23:40",
+  text:"Сил нет. А пост «надо» выложить. Что выбираешь?",
+  choices:[
+   {t:"Выложу мотивационную цитату — день не пропущен", tag:"chaos", c:+1, e:-5,
+    fb:"Лента не пуста. И смысла в ней тоже нет. Цитаты не продают экспертизу."},
+   {t:"Не лягу, пока не сделаю идеально", tag:"grind", c:+3, e:-20,
+    fb:"Пост идеальный. Ты — нет. Завтра встанешь разбитым, а послезавтра забросишь."},
+   {t:"Достаю заготовку из контент-плана", tag:"system", c:+5, e:-3,
+    fb:"5 минут — и готово. Система бережёт твою энергию, вдохновение — сжигает."}
+  ]},
+ {src:"👀", srcName:"Конкуренты",
+  text:"Конкурент запустил марафон — у него +5 000 подписчиков за неделю. Твоя реакция?",
+  choices:[
+   {t:"Срочно делаю такой же марафон!", tag:"magic", c:+3, e:-15,
+    fb:"Марафон съел две недели. У него за марафоном стояла воронка. У тебя — только марафон."},
+   {t:"Опускаются руки. Мне такого не добиться", tag:"ghost", c:-3, e:-10,
+    fb:"Пока ты сравниваешь себя с ним, он готовит следующий запуск."},
+   {t:"Разбираю его воронку: беру принцип, а не форму", tag:"system", c:+5, e:-5,
+    fb:"Принцип найден: марафон был лишь входом. Подписчиков грели дальше — до оплаты."}
+  ]},
+ {src:"📊", srcName:"Статистика",
+  text:"Охваты подросли. А заявок — по-прежнему ноль. В чём дело?",
+  choices:[
+   {t:"Мало контента. Удваиваю выпуск!", tag:"grind", c:+2, e:-20,
+    fb:"Больше контента → больше охвата → всё так же ноль заявок. Дело было не в объёме."},
+   {t:"Покупаю курс «Клиенты на автомате за 3 дня»", tag:"magic", c:0, e:-10,
+    fb:"Спойлер: на автомате там только списание денег с карты."},
+   {t:"Прохожу путь клиента сам: а куда вообще ведёт мой контент?", tag:"system", c:+8, e:-5,
+    fb:"Оказалось — никуда. Человеку негде оставить заявку. Контент без воронки — просто шум."}
+  ]},
+ {src:"📨", srcName:"Директ, снова",
+  text:"Пишет таргетолог: «Зальём трафик — клиенты попрут». Что решаешь?",
+  choices:[
+   {t:"Беру! Деньги решают", tag:"magic", c:+3, e:-10,
+    fb:"Трафик пришёл, потыкался в неупакованный профиль и ушёл. Минус 30 000 ₽."},
+   {t:"Реклама — развод. Только органика", tag:"ghost", c:0, e:0,
+    fb:"Органика — хорошо. Но ты сейчас отказался от масштаба из принципа, а не из расчёта."},
+   {t:"Сначала проверю, куда этот трафик приземлится", tag:"system", c:+6, e:-3,
+    fb:"Верно. Реклама умножает то, что есть. Ноль умножается плохо."}
+  ]},
+ {src:"☎️", srcName:"Конец месяца",
+  text:"Звонит друг: «Ну что, есть клиенты из соцсетей?» Что отвечаешь?",
+  choices:[
+   {t:"Пока нет… наверное, надо больше постить", tag:"chaos", c:0, e:-5,
+    fb:"«Больше постить» — это не стратегия. Кажется, ты уже и сам это понял."},
+   {t:"Похоже, соцсети — не для моей ниши", tag:"ghost", c:-3, e:0,
+    fb:"Ниша ни при чём. В твоей нише кто-то прямо сейчас получает заявки. Просто не ты."},
+   {t:"Есть первые заявки. Теперь строю систему, чтобы был поток", tag:"system", c:+8, e:-2,
+    fb:"Вот это разговор. Заявки — не удача, а результат выстроенного пути клиента."}
+  ]}
+];
+
+const VERDICTS = {
+ chaos:{
+  emoji:"🌪", name:"Контент-хаотик",
+  desc:"Ты постишь, когда есть настроение, и о том, что пришло в голову. Аудитория не понимает, кто ты, чем помогаешь и почему тебе стоит платить. А люди не покупают у тех, кого не понимают — даже если ты правда хорош.",
+  holes:[
+   "Нет единой линии контента — подписчик не может понять, что ты вообще продаёшь.",
+   "Профиль не упакован — тёплый трафик заходит и молча уходит.",
+   "Нет регулярности — алгоритмы не раскачивают охваты, каждый пост стартует с нуля."
+  ],
+  step:"Одна неделя по контент-плану из трёх рубрик даст больше, чем месяц «по вдохновению». План — на вечер, эффект — на месяцы."
+ },
+ ghost:{
+  emoji:"🫥", name:"Невидимый эксперт",
+  desc:"Ты сильный специалист — но об этом знаешь только ты. Ты не показываешь результаты, стесняешься называть цену и «не хочешь навязываться». Итог: клиенты уходят к тем, кто громче, хотя часто слабее тебя.",
+  holes:[
+   "Контент про себя и свой опыт, а не про боль клиента — людям не за что зацепиться.",
+   "Страх продаж — заявки сливаются прямо в переписке, на последнем шаге.",
+   "Нет кейсов и социальных доказательств — тебе верят меньше, чем ты заслуживаешь."
+  ],
+  step:"Один пост-кейс: задача клиента → что сделал → результат в цифрах → оффер в конце. Опубликовать на этой неделе."
+ },
+ grind:{
+  emoji:"🔥", name:"Выгоревший генератор",
+  desc:"Ты пашешь: рилсы, сторис, посты каждый день. Но контент без воронки — это конвейер, который сыплет детали мимо коробки. Охваты есть, денег нет, а силы кончаются. Ещё немного — и ты всё забросишь.",
+  holes:[
+   "Нет пути от просмотра к заявке — людям физически некуда «купить».",
+   "Много контента ≠ продающий контент: объём не заменяет смысл и оффер.",
+   "Всё держится на твоей энергии — а она конечна. Система должна работать без надрыва."
+  ],
+  step:"Стоп-неделя по объёму. Вместо десяти постов — одна связка: рилс → лид-магнит → оффер. И посмотри на цифры."
+ },
+ magic:{
+  emoji:"🔮", name:"Охотник за волшебной кнопкой",
+  desc:"Ты веришь, что где-то есть фишка, которая всё решит: новый курс, марафон, таргет, нейросети. Фишки меняются — результата нет. Потому что фишка без системы — это костыль без ноги.",
+  holes:[
+   "Бюджет и время уходят на «тесты» без стратегии — деньги сгорают, выводов нет.",
+   "Нет фундамента: позиционирование и воронка не построены, усиливать нечего.",
+   "Чужие схемы не ложатся на твою нишу — ты внедряешь форму без принципа."
+  ],
+  step:"Мораторий на новые «фишки» на месяц. За это время достроить базу: кто клиент → какой оффер → каким путём он к тебе приходит."
+ },
+ system:{
+  emoji:"🎯", name:"Системный стратег",
+  desc:"Редкий тип: ты уже думаешь как маркетолог. Позиционирование, воронка, аналитика — ты не просто знаешь слова, ты делаешь шаги. Твой потолок теперь — не знания, а руки и часы в сутках.",
+  holes:[
+   "Всё делаешь сам — рост упёрся в твои 24 часа, а не в рынок.",
+   "Контент не масштабируется: один ты не закроешь все форматы и площадки.",
+   "Связки работают, но вручную — без автоматизации система остаётся хобби."
+  ],
+  step:"Следующий уровень — контент-завод: делегированное производство контента и автоматизированная воронка, которые работают без твоего ежедневного участия."
+ }
+};
+
+/* ================= ЛОГИКА ================= */
+let step = 0;
+let clients = 10, energy = 80;
+let tags = {chaos:0, ghost:0, grind:0, magic:0, system:0};
+
+const $ = id => document.getElementById(id);
+
+function startGame(){
+  step = 0; clients = 10; energy = 80;
+  tags = {chaos:0, ghost:0, grind:0, magic:0, system:0};
+  $("intro").classList.remove("active");
+  $("result").classList.remove("active");
+  $("game").classList.add("active");
+  const track = $("storyTrack");
+  track.innerHTML = QUESTIONS.map(()=>'<div class="story-seg"><i></i></div>').join("");
+  updateMeters();
+  renderQuestion();
+  window.scrollTo(0,0);
+}
+
+function updateMeters(){
+  clients = Math.max(0, Math.min(100, clients));
+  energy  = Math.max(0, Math.min(100, energy));
+  $("valC").textContent = clients;
+  $("valE").textContent = energy;
+  $("barC").style.width = clients + "%";
+  $("barE").style.width = energy + "%";
+}
+
+function showDelta(el, v){
+  if(!v) return;
+  el.textContent = (v>0?"+":"") + v;
+  el.className = "delta " + (v>0?"pos":"neg");
+  void el.offsetWidth;
+  el.classList.add("show");
+}
+
+function renderQuestion(){
+  const q = QUESTIONS[step];
+  document.querySelectorAll(".story-seg").forEach((s,i)=> s.classList.toggle("done", i < step));
+  $("stage").innerHTML = `
+    <div class="situation">
+      <div class="src"><div class="src-ico">${q.src}</div><div class="src-name">${q.srcName} · ход ${step+1}/9</div></div>
+      <p>${q.text}</p>
+    </div>
+    <div class="choices">
+      ${q.choices.map((c,i)=>`<button class="btn choice" onclick="pick(${i})">${c.t}</button>`).join("")}
+    </div>`;
+  window.scrollTo(0,0);
+}
+
+function pick(i){
+  const q = QUESTIONS[step];
+  const ch = q.choices[i];
+  tags[ch.tag]++;
+  clients += ch.c; energy += ch.e;
+  updateMeters();
+  showDelta($("deltaC"), ch.c);
+  showDelta($("deltaE"), ch.e);
+  document.querySelectorAll(".story-seg")[step].classList.add("done");
+  const last = step === QUESTIONS.length - 1;
+  $("stage").innerHTML = `
+    <div class="situation">
+      <div class="src"><div class="src-ico">${q.src}</div><div class="src-name">${q.srcName}</div></div>
+      <p>${q.text}</p>
+    </div>
+    <div class="feedback"><span class="fb-tag">Что произошло</span>${ch.fb}</div>
+    <div class="next-wrap">
+      <button class="btn btn-primary" onclick="${last ? "finish()" : "nextQ()"}">${last ? "Узнать свой вердикт →" : "Дальше →"}</button>
+    </div>`;
+}
+
+function nextQ(){ step++; renderQuestion(); }
+
+function getVerdict(){
+  if(tags.system >= 6) return "system";
+  const order = ["ghost","grind","chaos","magic"];
+  return order.reduce((best,k)=> tags[k] > tags[best] ? k : best, order[0]);
+}
+
+function finish(){
+  const key = getVerdict();
+  const v = VERDICTS[key];
+  $("game").classList.remove("active");
+  const r = $("result");
+  r.innerHTML = `
+    <div class="verdict-hero">
+      <div class="v-emoji">${v.emoji}</div>
+      <div class="eyebrow v-eyebrow">Твой тип продвижения</div>
+      <h2>${v.name}</h2>
+      <p class="v-desc">${v.desc}</p>
+      <div class="finals">
+        <span class="final-pill">Клиенты <b>${clients}</b>/100</span>
+        <span class="final-pill">Энергия <b>${energy}</b>/100</span>
+      </div>
+    </div>
+
+    <div class="holes">
+      <h3>Куда утекают твои клиенты</h3>
+      ${v.holes.map((h,i)=>`<div class="hole"><span class="h-num">${i+1}</span><span>${h}</span></div>`).join("")}
+    </div>
+
+    <div class="first-step"><b>⚡ Первый шаг</b>${v.step}</div>
+
+    <div class="cta-block">
+      <h3>Хочешь закрыть эти дыры — не в игре, а в жизни?</h3>
+      <p>Я — Игорь Попов, выстраиваю системы «клиенты из соцсетей»: контент-стратегия, упаковка, воронки, контент-заводы. В телеграм-канале разбираю, как чинить каждую из этих дыр — на живых примерах. Там же — план действий под твой тип.</p>
+      <a class="btn btn-primary" href="${TG_LINK}" target="_blank" rel="noopener">Забрать план под тип «${v.name}» →</a>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn" onclick="shareResult('${key}')">Поделиться результатом</button>
+      <button class="btn" onclick="startGame()">Пройти ещё раз</button>
+    </div>
+
+    <p class="ps">P.S. Эта игра — тоже лид-магнит. Хочешь такую же под свой бизнес — <a href="${TG_LINK}" target="_blank" rel="noopener">напиши мне</a>.</p>`;
+  r.classList.add("active");
+  window.scrollTo(0,0);
+}
+
+async function shareResult(key){
+  const v = VERDICTS[key];
+  const text = `Я прошёл игру «Где твои клиенты?» — мой тип: ${v.name} ${v.emoji}\nПроверь свой за 3 минуты: ${location.href}`;
+  if(navigator.share){
+    try{ await navigator.share({text}); return; }catch(e){}
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("Текст с результатом скопирован — вставь его в сторис или чат 👌");
+  }catch(e){
+    prompt("Скопируй текст:", text);
+  }
+}
+</script>
+</body>
+</html>
